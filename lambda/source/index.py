@@ -3,6 +3,7 @@ import json
 import boto3
 import base64
 from botocore.exceptions import ClientError
+from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
 
 def lambda_handler(event, context):
     resp_data = {}
@@ -87,6 +88,11 @@ def lambda_handler(event, context):
 
 def auth_dynamo(id):
     client = boto3.client('dynamodb')
+
+    def from_dynamodb_to_json(item):
+        d = TypeDeserializer()
+        return {k: d.deserialize(value=v) for k, v in item.items()}
+
     ret={}
     try:
         # lookup the user in the table
@@ -100,8 +106,11 @@ def auth_dynamo(id):
         )
         # Extract the values from the response
         if response.get("Item"):
-            for k, v in response.get("Item").items():
-                ret[k]=list(v.values())[0]
+            d = TypeDeserializer()
+            ret = {k: d.deserialize(value=v) for k, v in response.get("Item").items()}
+            if ret.get("HomeDirectoryDetails"):
+                # expect HomeDirectoryDetails to be a json string
+                ret.update({'HomeDirectoryDetails': json.dumps(ret.get("HomeDirectoryDetails"))})
             return ret
         else:
             return None
