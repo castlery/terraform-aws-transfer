@@ -34,7 +34,9 @@ resource "aws_api_gateway_rest_api" "sftp-idp-secrets" {
   endpoint_configuration {
     types = ["REGIONAL"]
   }
-  body = data.template_file.api-definition.rendered
+  body = templatefile("${path.module}/api-definitions/openapi.yaml", {
+    LAMBDA_INVOKE_ARN = aws_lambda_function.sftp-idp.invoke_arn
+  })
 }
 
 resource "aws_lambda_permission" "allow_apigateway" {
